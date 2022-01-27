@@ -1,1 +1,1 @@
-worker: bin/gotriviabot
+web: bin/gotriviabot
