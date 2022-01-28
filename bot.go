@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"gotriviabot/discordclient"
-	"gotriviabot/handlers"
+	"gotriviabot/triviaHelper"
 )
 
 func main() {
@@ -15,8 +15,12 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
-	handlers.RegisterTriviaHandlers(client)
+	//setup for trivia flow
+	triviaStore := &(triviaHelper.ReplyStore{})
+	triviaHelper.RegisterTriviaHandler(client, triviaStore)
 
 	discordclient.CloseConnection(client)
+}
+
+type QuestionBucket struct {
 }

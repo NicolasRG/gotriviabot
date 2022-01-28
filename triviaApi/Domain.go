@@ -1,4 +1,4 @@
-package trivia
+package triviaApi
 
 import "fmt"
 
