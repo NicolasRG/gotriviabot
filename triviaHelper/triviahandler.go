@@ -33,7 +33,7 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 	if m.Content == "!getSomeTrivia" {
 
 		if store.active {
-			s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+"Question already in progress, fuck off")
+			s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+"Question already in progress")
 			return
 		}
 
