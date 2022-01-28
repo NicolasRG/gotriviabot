@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/k3a/html2text"
@@ -30,7 +31,12 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 	fmt.Println(m.Content)
 	if m.Content == "!getSomeTrivia" {
 
-		rawResponse, err := triviaApi.GetNumOfTrivia(1)
+		if store.active {
+			s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+"Question already in progress, fuck off")
+			return
+		}
+
+		rawRespnse, err := triviaApi.GetNumOfTrivia(1)
 
 		if err != nil {
 			fmt.Println(err)
@@ -44,7 +50,15 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 		formatedQuestion, letterAnswer := formatQuestion(activeQuestion, typeOfQuestion)
 		store.answerLetter = letterAnswer
 		store.question = activeQuestion.Question
-		s.ChannelMessageSend(m.ChannelID, formatedQuestion)
+		store.active = true
+		store.channelID = m.ChannelID
+		s.ChannelMessageend(m.ChannelID, formatedQuestion)
+
+		//create timeout
+		go func() {
+			time.Sleep(30 * ime.Second)
+			resolveQuestion(s, store)
+		}()
 	}
 
 	isAnswer, err := regexp.MatchString("![ABCD]", m.Content)
@@ -54,17 +68,16 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 		return
 	}
 
-	if isAnswer {
+	if isAnswer || store.active {
 
 		playerAns := strings.Replace(m.Content, "!", "", 1)
-		fmt.Println("Comparing : " + playerAns + " : " + store.answerLetter)
-		if strings.EqualFold(playerAns, store.answerLetter) {
-			s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+" Correct")
-		} else {
-			s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+" You suck")
-		}
+
+		store.replys[m.Author.ID] = playerAns
+		//logic to get correct answer
 	}
 
+	//some meme stuff
+	//TODO :  MOVE TO ITS OWN HANLDER LATER
 	//create a probability to react randomly to messages
 	shouldReply := rand.Intn(101)
 
@@ -87,7 +100,25 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 			fmt.Println(reactErr)
 		}
 	}
+}
 
+func resolveQuestion(s *discordgo.Session, store *ReplyStore) {
+
+	resolvedAnswer := ""
+	for id, playerAns := range store.replys {
+
+		fmt.Println("Comparing : " + playerAns + " : " + store.answerLetter)
+
+		if strings.EqualFold(playerAns, store.answerLetter) {
+			//s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+" Correct")
+			resolvedAnswer = resolvedAnswer + "\n" + " < @" + id + ">" + " Correct"
+		} else {
+			//s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+" You suck")
+			resolvedAnswer = resolvedAnswer + "\n" + " < @" + id + ">" + " You suck"
+		}
+	}
+
+	s.ChannelMessageSend(store.channelID, resolvedAnswer)
 }
 
 func formatQuestion(triviaObj triviaApi.TriviaEntry, typeOfQuestion string) (string, string) {
@@ -177,8 +208,9 @@ type answerBucket struct {
 }
 
 type ReplyStore struct {
-	replyees     []int
+	replys       map[string]string
+	channelID    string
 	question     string
 	answerLetter string
+	active       bool
 }
-
