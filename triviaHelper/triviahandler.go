@@ -14,6 +14,7 @@ import (
 
 func RegisterTriviaHandler(client *discordgo.Session, store *ReplyStore) {
 	fmt.Println("Registering Trivia Handler")
+	store.clearStore()
 	client.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
 		triviaSetup(s, m, store)
 	})
@@ -36,7 +37,7 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 			return
 		}
 
-		rawRespnse, err := triviaApi.GetNumOfTrivia(1)
+		rawResponse, err := triviaApi.GetNumOfTrivia(1)
 
 		if err != nil {
 			fmt.Println(err)
@@ -52,11 +53,11 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 		store.question = activeQuestion.Question
 		store.active = true
 		store.channelID = m.ChannelID
-		s.ChannelMessageend(m.ChannelID, formatedQuestion)
+		s.ChannelMessageSend(m.ChannelID, formatedQuestion)
 
 		//create timeout
 		go func() {
-			time.Sleep(30 * ime.Second)
+			time.Sleep(30 * time.Second)
 			resolveQuestion(s, store)
 		}()
 	}
@@ -68,12 +69,13 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 		return
 	}
 
-	if isAnswer || store.active {
+	if isAnswer && store.active {
 
 		playerAns := strings.Replace(m.Content, "!", "", 1)
 
 		store.replys[m.Author.ID] = playerAns
-		//logic to get correct answer
+
+		s.MessageReactionAdd(m.ChannelID, m.ID, "✔️")
 	}
 
 	//some meme stuff
@@ -104,21 +106,22 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 
 func resolveQuestion(s *discordgo.Session, store *ReplyStore) {
 
-	resolvedAnswer := ""
+	resolvedAnswer := "Correct Answer : " + store.answerLetter
 	for id, playerAns := range store.replys {
 
 		fmt.Println("Comparing : " + playerAns + " : " + store.answerLetter)
 
 		if strings.EqualFold(playerAns, store.answerLetter) {
 			//s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+" Correct")
-			resolvedAnswer = resolvedAnswer + "\n" + " < @" + id + ">" + " Correct"
+			resolvedAnswer = resolvedAnswer + "\n" + "<@" + id + ">" + " Correct"
 		} else {
 			//s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">"+" You suck")
-			resolvedAnswer = resolvedAnswer + "\n" + " < @" + id + ">" + " You suck"
+			resolvedAnswer = resolvedAnswer + "\n" + "<@" + id + ">" + " You suck"
 		}
 	}
 
 	s.ChannelMessageSend(store.channelID, resolvedAnswer)
+	store.clearStore()
 }
 
 func formatQuestion(triviaObj triviaApi.TriviaEntry, typeOfQuestion string) (string, string) {
@@ -213,4 +216,11 @@ type ReplyStore struct {
 	question     string
 	answerLetter string
 	active       bool
+}
+
+func (store *ReplyStore) clearStore() {
+	store.replys = make(map[string]string)
+	store.active = false
+	store.answerLetter = "_"
+	store.question = "_"
 }
