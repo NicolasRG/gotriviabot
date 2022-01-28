@@ -21,6 +21,3 @@ func main() {
 
 	discordclient.CloseConnection(client)
 }
-
-type QuestionBucket struct {
-}
