@@ -83,7 +83,7 @@ func triviaSetup(s *discordgo.Session, m *discordgo.MessageCreate, store *ReplyS
 	//create a probability to react randomly to messages
 	shouldReply := rand.Intn(101)
 
-	if shouldReply > 75 {
+	if shouldReply > 95 {
 		fmt.Println("reply :)")
 		//get guild emojis
 		emojis, err := s.GuildEmojis(m.GuildID)
